@@ -16,6 +16,7 @@ resource "google_compute_subnetwork" "main_subnet_0" {
 resource "google_compute_router" "main" {
   name    = "${google_compute_network.main.name}-router-0"
   network = google_compute_network.main.name
+  region  = var.gcp_region
 }
 
 resource "google_compute_address" "main" {
@@ -23,12 +24,13 @@ resource "google_compute_address" "main" {
   name         = "${google_compute_router.main.name}-ip-0"
   address_type = "EXTERNAL"
   network_tier = "PREMIUM"
-  labels       = { managed_by = "terraform" }
+  labels = var.labels
 }
 
 resource "google_compute_router_nat" "main" {
   name                               = "${google_compute_router.main.name}-nat-0"
   router                             = google_compute_router.main.name
+  region  = var.gcp_region
   nat_ip_allocate_option             = "MANUAL_ONLY"
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
   nat_ips                            = [google_compute_address.main.self_link]

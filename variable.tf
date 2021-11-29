@@ -19,7 +19,7 @@ variable "gitlab_registration_token" {
 }
 variable "gitlab_docker_machine_release" {
   type        = string
-  default     = "v0.16.2-gitlab.11"
+  default     = "v0.16.2-gitlab.12"
   description = "Release version of forked docker-machine. Available releases: https://gitlab.com/gitlab-org/ci-cd/docker-machine/-/releases "
 }
 variable "gcp_zone" {
@@ -38,4 +38,14 @@ variable "gcp_region" {
 variable "gitlab_register_runner" {
   type        = any
   description = "Map of different GitLab runners and their attributes. For more info refer 1) Google Machine drivers - https://docs.docker.com/machine/drivers/gce/ and 2) GitLab One-line registration command https://docs.gitlab.com/runner/register/#one-line-registration-command"
+}
+variable "labels" {
+  description = "Map of labels that will be added to created resources"
+  type        = map(string)
+  default     = {}
+}
+variable "runners_gitlab_url" {
+  description = "URL of the GitLab instance to connect to."
+  type        = string
+  default     = "https://gitlab.com"
 }

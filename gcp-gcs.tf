@@ -15,5 +15,5 @@ resource "google_storage_bucket" "bucket_cache" {
       type = "Delete"
     }
   }
-  labels = { managed_by = "terraform" }
+  labels = var.labels
 }

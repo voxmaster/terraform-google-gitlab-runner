@@ -36,3 +36,8 @@ resource "google_project_iam_member" "sa_gitlab" {
     )
   }
 }
+
+resource "google_project_iam_member" "sa_gitlab_artifacts" {
+  role   = "roles/artifactregistry.reader"
+  member = "serviceAccount:${google_service_account.sa_gitlab.email}"
+}

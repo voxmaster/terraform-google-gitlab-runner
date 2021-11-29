@@ -8,8 +8,9 @@ resource "random_id" "instance_id" {
 
 # Create GitLab-manager VM:
 resource "google_compute_instance" "gitlab_manager" {
+  depends_on = [ google_compute_router_nat.main ]
   name = "${var.gcp_gitlab_resource_prefix}-manager-vm-${random_id.instance_id.hex}"
-  machine_type = "custom-1-1024"
+  machine_type = "g1-small"
   zone = var.gcp_zone
   hostname = "${var.gcp_gitlab_resource_prefix}.manager-vm"
   tags = [var.gcp_gitlab_resource_prefix]
@@ -26,7 +27,14 @@ resource "google_compute_instance" "gitlab_manager" {
   metadata = {
     # enable Block Project-wide SSH keys:
     block-project-ssh-keys = "true"
+    shutdown-script = <<EOT
+#!/bin/bash
+for t in $(sudo sed -n 's/.*token = .*\(\".*\"\).*/\1/p' /etc/gitlab-runner/config.toml); 
+  do curl -sS --request DELETE "${var.runners_gitlab_url}/api/v4/runners" --form "token=$t"; 
+done
+    EOT
   }
+  labels = var.labels
   service_account {
     email = data.google_compute_default_service_account.default.email
     scopes = ["compute-rw"]
@@ -47,7 +55,9 @@ locals {
 data "template_file" "stage1_config" {
   template = <<EOF
 #!/bin/bash
-sleep 5
+echo Waiting 30s for network...
+sleep 30
+echo Start
 mkdir /etc/gitlab-runner/
 cat >/etc/gitlab-runner/${var.gcp_gitlab_resource_prefix}-cache.json <<EOT1
 ${base64decode(google_service_account_key.sa_gitlab.private_key)}
@@ -75,7 +85,7 @@ locals {
         runner_name                = key
         runner_limit               = value.runner_limit
         runner_request_concurrency = value.runner_request_concurrency
-        runner_url                 = value.runner_url
+        runner_url                 = var.runners_gitlab_url
         runner_idle_nodes          = value.runner_idle_nodes
         runner_idle_time           = value.runner_idle_time
         runner_max_builds          = value.runner_max_builds
@@ -154,9 +164,12 @@ data "template_file" "stage2_config" {
   --machine-machine-options "google-use-internal-ip-only=true" \
   --machine-machine-options "google-machine-type=${each.value.runner_machine_type}" \
   --machine-machine-options "google-disk-size=${each.value.runner_disk_size}" \
+  --machine-machine-options "google-disk-type=pd-balanced" \
   --machine-machine-options "google-tags=${var.gcp_gitlab_resource_prefix}" \
   --description "${each.value.runner_description}" \
-  --tag-list "${each.value.runner_tag}"
+  --tag-list "${each.value.runner_tag}" \
+  ${join(" ", [for k, v in var.labels : "--machine-machine-options \"google-label=${k}:${v}\""])} \
+
   EOF
 }
 
