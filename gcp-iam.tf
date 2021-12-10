@@ -2,6 +2,7 @@
 # - objectAdmin access to the GCS bucket where GitLab's cache reside;
 # - objectViewer access to the GCR;
 resource "google_service_account" "sa_gitlab" {
+  project     = var.gcp_project_id
   account_id = "sa-${var.gcp_gitlab_resource_prefix}"
   display_name = "sa-${var.gcp_gitlab_resource_prefix}"
   description = "SA for Gitlab Runner cache and GCR ReadOnly access (Pull Container Images)"
@@ -20,6 +21,7 @@ resource "google_storage_bucket_iam_binding" "gitlab_runner" {
 }
 
 resource "google_project_iam_member" "sa_gitlab" {
+  project     = var.gcp_project_id
   role   = "roles/storage.objectViewer"
   member = "serviceAccount:${google_service_account.sa_gitlab.email}"
 
@@ -38,6 +40,7 @@ resource "google_project_iam_member" "sa_gitlab" {
 }
 
 resource "google_project_iam_member" "sa_gitlab_artifacts" {
+  project     = var.gcp_project_id
   role   = "roles/artifactregistry.reader"
   member = "serviceAccount:${google_service_account.sa_gitlab.email}"
 }

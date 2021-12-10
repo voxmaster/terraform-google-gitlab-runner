@@ -20,11 +20,10 @@ resource "google_compute_router" "main" {
 }
 
 resource "google_compute_address" "main" {
-  provider     = google-beta
   name         = "${google_compute_router.main.name}-ip-0"
   address_type = "EXTERNAL"
   network_tier = "PREMIUM"
-  labels = var.labels
+  region       = var.gcp_region
 }
 
 resource "google_compute_router_nat" "main" {

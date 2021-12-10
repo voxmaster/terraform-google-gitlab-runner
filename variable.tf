@@ -17,6 +17,11 @@ variable "gitlab_registration_token" {
   type        = string
   description = "Registration token. Can be found under Settings > CI/CD and expand the Runners section of group you want to make the runner work for"
 }
+variable "gitlab_docker_machine_type" {
+  type        = string
+  default     = "f1-micro"
+  description = "Gitlab manager instance type (docker-machine)"
+}
 variable "gitlab_docker_machine_release" {
   type        = string
   default     = "v0.16.2-gitlab.12"

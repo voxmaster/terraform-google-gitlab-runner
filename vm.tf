@@ -10,7 +10,7 @@ resource "random_id" "instance_id" {
 resource "google_compute_instance" "gitlab_manager" {
   depends_on = [ google_compute_router_nat.main ]
   name = "${var.gcp_gitlab_resource_prefix}-manager-vm-${random_id.instance_id.hex}"
-  machine_type = "g1-small"
+  machine_type = var.gitlab_docker_machine_type
   zone = var.gcp_zone
   hostname = "${var.gcp_gitlab_resource_prefix}.manager-vm"
   tags = [var.gcp_gitlab_resource_prefix]
