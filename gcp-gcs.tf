@@ -15,5 +15,9 @@ resource "google_storage_bucket" "bucket_cache" {
       type = "Delete"
     }
   }
+  lifecycle {
+    ignore_changes = [ logging ]
+  }
+
   labels = var.labels
 }
