@@ -1,6 +1,5 @@
 # Retrieve default service account for this project
-data "google_compute_default_service_account" "default" {
-}
+data "google_compute_default_service_account" "default" {}
 # Generate a random numbers that is intended to be used as unique identifiers for other resources
 resource "random_id" "instance_id" {
   byte_length = 4
@@ -8,11 +7,15 @@ resource "random_id" "instance_id" {
 
 # Create GitLab-manager VM:
 resource "google_compute_instance" "gitlab_manager" {
-  depends_on = [ google_compute_router_nat.main ]
-  name = "${var.gcp_gitlab_resource_prefix}-manager-vm-${random_id.instance_id.hex}"
+  depends_on = [
+    google_compute_router_nat.main,
+    google_compute_firewall.allow-ssh,
+    google_compute_firewall.allow-all-internal
+  ]
+  name = "${var.gcp_gitlab_resource_prefix}-manager-${random_id.instance_id.hex}"
   machine_type = var.gitlab_docker_machine_type
   zone = var.gcp_zone
-  hostname = "${var.gcp_gitlab_resource_prefix}.manager-vm"
+  hostname = "${var.gcp_gitlab_resource_prefix}.manager"
   tags = [var.gcp_gitlab_resource_prefix]
   
   boot_disk {
@@ -21,8 +24,8 @@ resource "google_compute_instance" "gitlab_manager" {
     }
   }
   network_interface {
-    network = google_compute_network.main.name
-    subnetwork = google_compute_subnetwork.main_subnet_0.name
+    network = google_compute_network.main[0].name
+    subnetwork = google_compute_subnetwork.main_subnet_0[0].name
   }
   metadata = {
     # enable Block Project-wide SSH keys:
@@ -97,6 +100,7 @@ locals {
       }
     ]
   ])
+  runner_labels = merge(var.labels, {"docker_machine" = "${var.gcp_gitlab_resource_prefix}-manager-${random_id.instance_id.hex}"} )
 }
 
 
@@ -120,6 +124,7 @@ locals {
   }
 }
 
+# NOTE: machine options: https://gitlab.com/gitlab-org/ci-cd/docker-machine/-/blob/main/drivers/google/google.go#L95
 data "template_file" "stage2_config" {
   for_each = {
     # Generate a unique string identifier for each instance
@@ -155,11 +160,14 @@ data "template_file" "stage2_config" {
   --machine-max-builds ${each.value.runner_max_builds} \
   --machine-machine-driver google \
   --machine-machine-name ${each.key}-%s \
+  --machine-machine-options "engine-registry-mirror=https://mirror.gcr.io" \
+  --machine-machine-options "google-service-account=${google_service_account.sa_gitlab.email}" \
   --machine-machine-options "google-zone=${var.gcp_zone}" \
-  --machine-machine-options "google-machine-image=ubuntu-os-cloud/global/images/ubuntu-1804-bionic-v20200610" \
+  --machine-machine-options "google-metadata=block-project-ssh-keys=true" \
+  --machine-machine-options "google-machine-image=ubuntu-os-cloud/global/images/family/ubuntu-1804-lts" \
   --machine-machine-options "google-project=${var.gcp_project_id}" \
-  --machine-machine-options "google-network=${var.gcp_gitlab_resource_prefix}" \
-  --machine-machine-options "google-subnetwork=${google_compute_network.main.name}-subnet-0" \
+  --machine-machine-options "google-network=${google_compute_network.main[0].name}" \
+  --machine-machine-options "google-subnetwork=${google_compute_subnetwork.main_subnet_0[0].name}" \
   ${each.value.runner_preemptible == true ? "--machine-machine-options \"google-preemptible\"" : ""} \
   --machine-machine-options "google-use-internal-ip-only=true" \
   --machine-machine-options "google-machine-type=${each.value.runner_machine_type}" \
@@ -168,7 +176,7 @@ data "template_file" "stage2_config" {
   --machine-machine-options "google-tags=${var.gcp_gitlab_resource_prefix}" \
   --description "${each.value.runner_description}" \
   --tag-list "${each.value.runner_tag}" \
-  ${join(" ", [for k, v in var.labels : "--machine-machine-options \"google-label=${k}:${v}\""])} \
+  ${join(" ", [for k, v in local.runner_labels : "--machine-machine-options \"google-label=${k}:${v}\""])} \
 
   EOF
 }

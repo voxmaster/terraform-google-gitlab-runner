@@ -7,6 +7,7 @@ resource "google_storage_bucket" "bucket_cache" {
   location      = var.gcp_region
   force_destroy = true
 
+  uniform_bucket_level_access = true
   lifecycle_rule {
     condition {
       age = var.gcp_gcs_cache_age

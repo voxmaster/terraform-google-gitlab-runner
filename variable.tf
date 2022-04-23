@@ -24,7 +24,7 @@ variable "gitlab_docker_machine_type" {
 }
 variable "gitlab_docker_machine_release" {
   type        = string
-  default     = "v0.16.2-gitlab.12"
+  default     = "v0.16.2-gitlab.13"
   description = "Release version of forked docker-machine. Available releases: https://gitlab.com/gitlab-org/ci-cd/docker-machine/-/releases "
 }
 variable "gcp_zone" {
@@ -53,4 +53,29 @@ variable "runners_gitlab_url" {
   description = "URL of the GitLab instance to connect to."
   type        = string
   default     = "https://gitlab.com"
+}
+variable "dm_firewall_rule_fix" {
+  description = "Create a firewall rule named `docker-machines` as workaround for issue. https://gitlab.com/gitlab-org/ci-cd/docker-machine/-/issues/47"
+  type        = bool
+  default     = true
+}
+variable "create_network" {
+  description = "Create a dedicated network resources"
+  type        = bool
+  default     = true
+}
+variable "create_firewall_rules" {
+  description = "Create required firewall rules"
+  type        = bool
+  default     = true
+}
+variable "network" {
+  description = "VPC Network name"
+  type        = string
+  default     = "default"
+}
+variable "subnetwork" {
+  description = "VPC Subnetwork name"
+  type        = string
+  default     = "default"
 }
