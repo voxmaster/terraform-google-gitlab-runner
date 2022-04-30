@@ -9,8 +9,6 @@ resource "random_id" "instance_id" {
 resource "google_compute_instance" "gitlab_manager" {
   depends_on = [
     google_compute_router_nat.main,
-    google_compute_firewall.allow-ssh,
-    google_compute_firewall.allow-all-internal
   ]
   name = "${var.gcp_gitlab_resource_prefix}-manager-${random_id.instance_id.hex}"
   machine_type = var.gitlab_docker_machine_type
@@ -24,17 +22,20 @@ resource "google_compute_instance" "gitlab_manager" {
     }
   }
   network_interface {
-    network = google_compute_network.main[0].name
-    subnetwork = google_compute_subnetwork.main_subnet_0[0].name
+    network = var.create_network ? google_compute_network.main[0].name : var.network
+    subnetwork = var.create_network ? google_compute_subnetwork.main_subnet_0[0].name : var.subnetwork
   }
   metadata = {
     # enable Block Project-wide SSH keys:
     block-project-ssh-keys = "true"
     shutdown-script = <<EOT
 #!/bin/bash
+echo "DEREGISTER RUNNERS..."
 for t in $(sudo sed -n 's/.*token = .*\(\".*\"\).*/\1/p' /etc/gitlab-runner/config.toml); 
   do curl -sS --request DELETE "${var.runners_gitlab_url}/api/v4/runners" --form "token=$t"; 
 done
+echo "DELETING RUNNERS..."
+gcloud compute instances delete $(gcloud compute instances list --filter="labels.docker_machine=${var.gcp_gitlab_resource_prefix}-manager-${random_id.instance_id.hex}" --format="value(name)" ) --zone ${var.gcp_zone} --quiet
     EOT
   }
   labels = var.labels
@@ -166,8 +167,8 @@ data "template_file" "stage2_config" {
   --machine-machine-options "google-metadata=block-project-ssh-keys=true" \
   --machine-machine-options "google-machine-image=ubuntu-os-cloud/global/images/family/ubuntu-1804-lts" \
   --machine-machine-options "google-project=${var.gcp_project_id}" \
-  --machine-machine-options "google-network=${google_compute_network.main[0].name}" \
-  --machine-machine-options "google-subnetwork=${google_compute_subnetwork.main_subnet_0[0].name}" \
+  --machine-machine-options "google-network=${var.create_network ? google_compute_network.main[0].name : var.network}" \
+  --machine-machine-options "google-subnetwork=${var.create_network ? google_compute_network.main[0].name : var.subnetwork}" \
   ${each.value.runner_preemptible == true ? "--machine-machine-options \"google-preemptible\"" : ""} \
   --machine-machine-options "google-use-internal-ip-only=true" \
   --machine-machine-options "google-machine-type=${each.value.runner_machine_type}" \
