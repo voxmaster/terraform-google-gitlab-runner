@@ -1,6 +1,21 @@
-# Google SA with:
-# - objectAdmin access to the GCS bucket where GitLab's cache reside;
-# - objectViewer access to the GCR;
+###* Service Account for Gitlab Manager Instance *###
+resource "google_service_account" "sa_gitlab_manager" {
+  project      = var.gcp_project_id
+  account_id   = "sa-${var.gcp_gitlab_resource_prefix}-manager"
+  display_name = "sa-${var.gcp_gitlab_resource_prefix}-manager"
+  description  = "SA for Gitlab Manager Instance"
+}
+resource "google_project_iam_member" "sa_gitlab_manager" {
+  for_each = toset([
+    "roles/compute.instanceAdmin.v1",
+    "roles/iam.serviceAccountUser"
+  ])
+  project = var.gcp_project_id
+  role    = each.key
+  member  = "serviceAccount:${google_service_account.sa_gitlab_manager.email}"
+}
+
+###* Service Account for Runners to use Cache Bucket and Read from Container/Artifact Registry *###
 resource "google_service_account" "sa_gitlab" {
   project     = var.gcp_project_id
   account_id = "sa-${var.gcp_gitlab_resource_prefix}"

@@ -40,8 +40,8 @@ gcloud compute instances delete $(gcloud compute instances list --filter="labels
   }
   labels = var.labels
   service_account {
-    email = data.google_compute_default_service_account.default.email
-    scopes = ["compute-rw"]
+    email  = google_service_account.sa_gitlab_manager.email
+    scopes = ["cloud-platform"]
   }
   metadata_startup_script = join("\n", [data.template_file.stage1_config.rendered, local.stage2_config, data.template_file.stage3_config.rendered])
 }
